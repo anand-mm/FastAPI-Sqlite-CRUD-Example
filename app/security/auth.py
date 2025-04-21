@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 import jwt
 from passlib.context import CryptContext
@@ -13,6 +13,11 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
+
+ENDPOINT_ACCESS_RULES = {
+    "/items/": ["admin", "guest"],
+    "/users/": ["admin"],
+}
 
 # Hash password
 def hash_password(password: str) -> str:
@@ -34,10 +39,18 @@ def verify_token(token: str = Depends(oauth2_scheme)):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
+        role: str = payload.get("role")
         if username is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-        return username  # ✅ Return the username from token
+        return {"username": username, "role": role}
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    
+def restrict_users_for(request: Request,user: dict=Depends(verify_token)):
+    path = request.url.path
+    allowed_users = ENDPOINT_ACCESS_RULES.get(path,[])
+    if user["role"] not in allowed_users:
+        raise HTTPException(status_code=403, detail= "Unauthorized for this path")
+    return user
