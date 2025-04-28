@@ -2,9 +2,9 @@ from typing import List
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.db import get_db
-from app.models.User import User
-from app.models.UserSchema import UserCreate, UserResponse
-from app.security.auth import hash_password
+from app.users.User import User
+from app.users.UserSchema import UserCreate, UserResponse
+from app.auth.auth import hash_password
 
 
 router = APIRouter(prefix="/users",tags=["Users"])

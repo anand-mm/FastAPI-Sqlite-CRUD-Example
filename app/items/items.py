@@ -2,9 +2,9 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db import get_db
-from app.models.Item import Item
-from app.models.ItemSchema import ItemResponse,ItemCreate
-from app.security.auth import verify_token
+from app.items.Item import Item
+from app.items.ItemSchema import ItemResponse,ItemCreate
+from app.auth.auth import verify_token
 
 
 router = APIRouter(prefix="/items", tags=["List Items"])
