@@ -1,25 +1,41 @@
 from typing import List
 from fastapi import APIRouter, Depends
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from app.db import get_db
-from app.users.User import User
-from app.users.UserSchema import UserCreate, UserResponse
+from app.users.exception import CustomException
+from app.users.models import ExpoLogin
+from app.users.schemas import UserCreate, UserResponse
 from app.auth.auth import hash_password
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 router = APIRouter(prefix="/users",tags=["Users"])
 
 @router.post("/",response_model=UserResponse)
-def create_user(user: UserCreate, db: Session = Depends(get_db)) -> UserResponse:
-    new_user = User(username=user.username,password=hash_password(user.password))
-    db.add(new_user); db.commit(); db.refresh(new_user)
+async def create_user(user: UserCreate, db: AsyncSession = Depends(get_db)) -> UserResponse:
+    new_user = ExpoLogin(
+        loginid=user.loginid,
+        password=hash_password(user.password),
+        usertype=user.usertype,
+        createdby=user.createdby  # optional: only if provided
+    )
+    db.add(new_user)
+    await db.commit()
+    await db.refresh(new_user)
     return new_user
     
 @router.get("/")
-def read_users(db: Session= Depends(get_db)) -> list[UserResponse]:
-    return db.query(User).all()
+async def read_users(db: AsyncSession= Depends(get_db)) -> list[UserResponse]:
+    result = await db.execute(select(ExpoLogin))
+    logins = result.scalars().all()
+    return logins
 
 
 @router.get("/{id}")
-def read_users(id: int,db: Session= Depends(get_db),) -> UserResponse:
-    return db.query(User).filter(User.id==id).first()
+async def read_users(id: int,db: AsyncSession= Depends(get_db),) -> UserResponse:
+    if id == 1:
+        raise CustomException(name=id)
+    result = await db.execute(select(ExpoLogin).where(ExpoLogin.id == id))
+    return result.scalar_one_or_none()
+    return await db.query(User).filter(User.id==id).first()
